@@ -472,13 +472,19 @@ func (p *PodStore) addStatus(metric CIMetric, pod *corev1.Pod) {
 					switch {
 					case containerStatus.State.Running != nil:
 						metric.AddTag(ci.ContainerStatus, "Running")
+						metric.AddField(ci.ContainerStatusRunning, 1)
 					case containerStatus.State.Waiting != nil:
 						metric.AddTag(ci.ContainerStatus, "Waiting")
+						metric.AddField(ci.ContainerStatusWaiting, 1)
 						if containerStatus.State.Waiting.Reason != "" {
 							metric.AddTag(ci.ContainerStatusReason, containerStatus.State.Waiting.Reason)
+							if strings.Contains(containerStatus.State.Waiting.Reason, "Crash") {
+								metric.AddField(ci.ContainerStatusWaitingReasonCrashed, 1)
+							}
 						}
 					case containerStatus.State.Terminated != nil:
 						metric.AddTag(ci.ContainerStatus, "Terminated")
+						metric.AddField(ci.ContainerStatusTerminated, 1)
 						if containerStatus.State.Terminated.Reason != "" {
 							metric.AddTag(ci.ContainerStatusReason, containerStatus.State.Terminated.Reason)
 						}

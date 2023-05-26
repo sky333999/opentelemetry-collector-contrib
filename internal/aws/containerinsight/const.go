@@ -218,6 +218,12 @@ func init() {
 		StatusCapacityPods:                UnitCount,
 		StatusAllocatablePods:             UnitCount,
 
+		// kube-state-metrics equivalents
+		ContainerStatusRunning:              UnitCount,
+		ContainerStatusTerminated:           UnitCount,
+		ContainerStatusWaiting:              UnitCount,
+		ContainerStatusWaitingReasonCrashed: UnitCount,
+
 		// cluster metrics
 		NodeCount:       UnitCount,
 		FailedNodeCount: UnitCount,
