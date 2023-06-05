@@ -51,7 +51,7 @@ type podKey struct {
 	namespace    string
 }
 
-func processContainers(cInfos []*cInfo.ContainerInfo, mInfo extractors.CPUMemInfoProvider, containerOrchestrator string, logger *za) []*extractors.CAdvisorMetric {
+func processContainers(cInfos []*cInfo.ContainerInfo, mInfo extractors.CPUMemInfoProvider, containerOrchestrator string, logger *zap.Logger) []*extractors.CAdvisorMetric {
 	var metrics []*extractors.CAdvisorMetric
 	podKeys := make(map[string]podKey)
 
