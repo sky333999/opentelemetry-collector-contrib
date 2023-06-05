@@ -19,6 +19,7 @@ package cadvisor // import "github.com/open-telemetry/opentelemetry-collector-co
 
 import (
 	"fmt"
+	"math/rand"
 	"path"
 	"strconv"
 	"strings"
@@ -102,6 +103,7 @@ func processContainers(cInfos []*cInfo.ContainerInfo, mInfo extractors.CPUMemInf
 func processContainer(info *cInfo.ContainerInfo, mInfo extractors.CPUMemInfoProvider, containerOrchestrator string, logger *zap.Logger) ([]*extractors.CAdvisorMetric, *podKey, error) {
 	var result []*extractors.CAdvisorMetric
 	var pKey *podKey
+	random := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	if isContainerInContainer(info.Name) {
 		return result, pKey, fmt.Errorf("drop metric because it's nested container, name: %s", info.Name)
@@ -110,12 +112,14 @@ func processContainer(info *cInfo.ContainerInfo, mInfo extractors.CPUMemInfoProv
 	tags := map[string]string{}
 
 	var containerType string
+	p.logger.Info(fmt.Sprintf("FINDME1-%d: Procssing cinfo with name: %s", random.Int(), info.Name))
 	if info.Name != "/" {
 		// Only a container has all these three labels set.
 		containerName := info.Spec.Labels[containerNameLabel]
 		namespace := info.Spec.Labels[namespaceLabel]
 		podName := info.Spec.Labels[podNameLabel]
 		podID := info.Spec.Labels[podIDLabel]
+		p.logger.Info(fmt.Sprintf("FINDME1-%d: Details: Name:%s, Namespace:%s, PodName:%s, PodID:%s", random.Int(), containerName, namespace, podName, podID))
 		// NOTE: containerName can be empty for pause container on containerd
 		// https://github.com/containerd/cri/issues/922#issuecomment-423729537
 		if namespace == "" || podName == "" {
@@ -141,10 +145,12 @@ func processContainer(info *cInfo.ContainerInfo, mInfo extractors.CPUMemInfoProv
 		// For docker, pause container name is set to POD while containerd does not set it.
 		// See https://github.com/aws/amazon-cloudwatch-agent/issues/188
 		case "", infraContainerName:
+			p.logger.Info(fmt.Sprintf("FINDME1-%d: Sending as InfraContainer with path: %s", random.Int(), podPath))
 			// NOTE: the pod here is only used by NetMetricExtractor,
 			// other pod info like CPU, Mem are dealt within in processPod.
 			containerType = ci.TypeInfraContainer
 		default:
+			p.logger.Info(fmt.Sprintf("FINDME1-%d: Sending as NonInfraContainer with path: %s", random.Int(), podPath))
 			tags[ci.ContainerNamekey] = containerName
 			containerID := path.Base(info.Name)
 			tags[ci.ContainerIDkey] = containerID
@@ -156,6 +162,7 @@ func processContainer(info *cInfo.ContainerInfo, mInfo extractors.CPUMemInfoProv
 			}
 		}
 	} else {
+		p.logger.Info(fmt.Sprintf("FINDME1-%d: Sending as Node with path: %s", random.Int(), podPath))
 		containerType = ci.TypeNode
 		if containerOrchestrator == ci.ECS {
 			containerType = ci.TypeInstance

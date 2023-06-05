@@ -488,6 +488,7 @@ func (p *PodStore) addStatus(metric CIMetric, pod *corev1.Pod) {
 			p.setPrevMeasurement(ci.TypePod, podKey, prevPodMeasurement{containersRestarts: curContainerRestarts})
 		}
 	} else if metric.GetTag(ci.MetricType) == ci.TypeContainer {
+		p.logger.Info(fmt.Sprintf("FINDME2: Adding status for container: %s", metric.GetTag(ci.ContainerNamekey)))
 		if containerName := metric.GetTag(ci.ContainerNamekey); containerName != "" {
 			for _, containerStatus := range pod.Status.ContainerStatuses {
 				if containerStatus.Name == containerName {
@@ -499,9 +500,11 @@ func (p *PodStore) addStatus(metric CIMetric, pod *corev1.Pod) {
 					}
 					switch {
 					case containerStatus.State.Running != nil:
+						p.logger.Info(fmt.Sprintf("FINDME2: Running status for container: %s", metric.GetTag(ci.ContainerNamekey)))
 						metric.AddTag(ci.ContainerStatus, "Running")
 						possibleStatuses[ci.StatusRunning] = 1
 					case containerStatus.State.Waiting != nil:
+						p.logger.Info(fmt.Sprintf("FINDME2: Waiting status for container: %s", metric.GetTag(ci.ContainerNamekey)))
 						metric.AddTag(ci.ContainerStatus, "Waiting")
 						possibleStatuses[ci.StatusWaiting] = 1
 						if containerStatus.State.Waiting.Reason != "" {
@@ -511,6 +514,7 @@ func (p *PodStore) addStatus(metric CIMetric, pod *corev1.Pod) {
 							}
 						}
 					case containerStatus.State.Terminated != nil:
+						p.logger.Info(fmt.Sprintf("FINDME2: Terminated status for container: %s", metric.GetTag(ci.ContainerNamekey)))
 						metric.AddTag(ci.ContainerStatus, "Terminated")
 						possibleStatuses[ci.StatusTerminated] = 1
 						if containerStatus.State.Terminated.Reason != "" {
