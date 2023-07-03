@@ -18,8 +18,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"strings"
 	"time"
 
+	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.uber.org/zap"
 
@@ -144,6 +146,86 @@ func (mt metricTranslator) translateOTelToGroupedMetric(rm pmetric.ResourceMetri
 			if err != nil {
 				return err
 			}
+		}
+	}
+	return nil
+}
+
+// translateOTelToGroupedMetricLight converts OT metrics to Grouped Metric format without actually doing any grouping or delta calcs.
+func (mt metricTranslator) translateOTelToGroupedForPrometheus(idx int, rm pmetric.ResourceMetrics, groupedMetrics map[interface{}]*groupedMetric, config *Config) error {
+
+	timestamp := time.Now().UnixNano() / int64(time.Millisecond)
+	var instrumentationScopeName string
+	cWNamespace := getNamespace(rm, config.Namespace)
+	logGroup, logStream, patternReplaceSucceeded := getLogInfo(rm, cWNamespace, config)
+
+	ilms := rm.ScopeMetrics()
+	labels := make(map[string]string)
+	var metrics map[string]*metricInfo
+	rm.Resource().Attributes().Range(func(k string, v pcommon.Value) bool {
+		labels[k] = v.Str() // Consider both resource attributes and data point attributes for labels
+		return true
+	})
+
+	if ilms.Len() > 0 {
+		metadata := cWMetricMetadata{
+			groupedMetricMetadata: groupedMetricMetadata{
+				namespace:      cWNamespace,
+				timestampMs:    timestamp,
+				logGroup:       logGroup,
+				logStream:      logStream,
+				metricDataType: pmetric.MetricTypeGauge, // This method assumes everything is a gauge
+			},
+			instrumentationScopeName: instrumentationScopeName,
+			receiver:                 "",
+		}
+		for i := 0; i < ilms.Len(); i++ { // Iterate over scope metrics within a resource metric
+			ilm := ilms.At(i)
+			m := ilm.Metrics()
+			for j := 0; j < m.Len(); j++ { // Iterate over metrics within a scope metric
+				metric := m.At(j)
+				metricGauge := metric.Gauge()   // This method assumes everything is a gauge
+				dps := metricGauge.DataPoints() // Iterate over data points within a metric
+				for k := 0; k < dps.Len(); k++ {
+					dp := dps.At(k)
+					var metricVal float64
+					switch dp.ValueType() {
+					case pmetric.NumberDataPointValueTypeDouble:
+						metricVal = dp.DoubleValue()
+					case pmetric.NumberDataPointValueTypeInt:
+						metricVal = float64(dp.IntValue())
+					}
+					minfo := &metricInfo{
+						value: metricVal,
+						unit:  translateUnit(metric, mt.metricDescriptor),
+					}
+					if k == 0 {
+						// For the first datapoint, initialize the labels and the metrics map
+						for key, val := range createLabels(dp.Attributes(), "") {
+							labels[key] = val
+						}
+						metrics = map[string]*metricInfo{metric.Name(): minfo}
+					} else {
+						// For all subsequent datapoints, dont add labels since its assumed they were already grouped
+						metrics[metric.Name()] = minfo
+					}
+				}
+			}
+		}
+
+		if !patternReplaceSucceeded {
+			if strings.Contains(metadata.logGroup, "undefined") {
+				metadata.logGroup, _ = replacePatterns(config.LogGroupName, labels, config.logger)
+			}
+			if strings.Contains(metadata.logStream, "undefined") {
+				metadata.logStream, _ = replacePatterns(config.LogStreamName, labels, config.logger)
+			}
+		}
+
+		groupedMetrics[idx] = &groupedMetric{
+			labels:   labels,
+			metrics:  metrics,
+			metadata: metadata,
 		}
 	}
 	return nil

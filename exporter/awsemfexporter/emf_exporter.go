@@ -104,10 +104,19 @@ func (emf *emfExporter) pushMetricsData(_ context.Context, md pmetric.Metrics) e
 	defaultLogStream := fmt.Sprintf("otel-stream-%s", emf.collectorID)
 	outputDestination := emf.config.OutputDestination
 
-	for i := 0; i < rms.Len(); i++ {
-		err := emf.metricTranslator.translateOTelToGroupedMetric(rms.At(i), groupedMetrics, emf.config)
-		if err != nil {
-			return err
+	if emf.config.DisableGroupingAndCalc {
+		for i := 0; i < rms.Len(); i++ {
+			err := emf.metricTranslator.translateOTelToGroupedForPrometheus(i, rms.At(i), groupedMetrics, emf.config)
+			if err != nil {
+				return err
+			}
+		}
+	} else {
+		for i := 0; i < rms.Len(); i++ {
+			err := emf.metricTranslator.translateOTelToGroupedMetric(rms.At(i), groupedMetrics, emf.config)
+			if err != nil {
+				return err
+			}
 		}
 	}
 

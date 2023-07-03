@@ -77,6 +77,7 @@ func addToGroupedMetric(pmd pmetric.Metric, groupedMetrics map[interface{}]*grou
 			}
 
 			if dp.timestampMs > 0 {
+				// So if there was already a group key with a timestamp, this would overwrite it? Should this be part of group key
 				metadata.timestampMs = dp.timestampMs
 			}
 

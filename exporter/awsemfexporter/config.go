@@ -94,6 +94,10 @@ type Config struct {
 	// preserve the quantile's population)
 	DetailedMetrics bool `mapstructure:"detailed_metrics"`
 
+	// DisableGroupingAndCalc is an option for for disabling the grouping logic and the calculation for delta for counters, summaries etc.
+	// This is a very targeted flag for usecases that already do these in the receiver and hence do not need them.
+	DisableGroupingAndCalc bool `mapstructure:"disable_grouping_and_calc"`
+
 	// Version is an option for sending metrics to CloudWatchLogs with Embedded Metric Format in selected version  (with "_aws")
 	// https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch_Embedded_Metric_Format_Specification.html#CloudWatch_Embedded_Metric_Format_Specification_structure
 	// Otherwise, sending metrics as Embedded Metric Format version 0 (without "_aws")
